@@ -1,3 +1,5 @@
+** Required dependencies
+
 openai
 python-dotenv
 pandas
