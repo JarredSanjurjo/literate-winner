@@ -105,31 +105,6 @@ This section is structured so it can be dropped straight into a Word document as
 - Documentation explains business purpose, architecture, controls and future enterprise path.
 - Final assets are clean enough to support applications and interviews.
 
-# 3. Word-Ready Document Structure
-
-Use the following heading ladder when converting the pack into a formal report or case study document.
-
-|   |   |
-|---|---|
-|**No.**|**Section**|
-|1|Executive Summary|
-|2|1. Business Context and Problem Statement|
-|3|2. Project Objective and Success Measures|
-|4|3. Use Case Definition|
-|5|4. Scope and Assumptions|
-|6|5. Solution Overview|
-|7|6. System Architecture|
-|8|7. Data Design and Test Strategy|
-|9|8. Functional Requirements|
-|10|9. Non-Functional Requirements|
-|11|10. Controls, Risks and Governance|
-|12|11. Delivery Plan and Milestones|
-|13|12. Enterprise Implementation Framing|
-|14|13. Final Artefacts|
-|15|Appendix A: Output Schema|
-|16|Appendix B: Prompt Version Register|
-|17|Appendix C: Demo Script|
-
 # 4. Immediate Build Checklist
 
 - ☐ Create public repository named ai-implementation-lab.
