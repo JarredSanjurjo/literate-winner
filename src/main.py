@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime
 from pathlib import Path
 
 from src.adapters.base import BaseAdapter
@@ -22,6 +23,12 @@ from src.services.storage import StorageService
 from src.services.validator import validate_output
 from src.utils.ids import generate_run_id
 from src.utils.timestamps import utc_now
+
+
+def elapsed_ms(started_at: datetime, completed_at: datetime) -> int:
+    """Return elapsed processing time in milliseconds."""
+
+    return int((completed_at - started_at).total_seconds() * 1000)
 
 
 def resolve_adapter(input_ref: str, source_type: str | None = None) -> BaseAdapter:
@@ -72,13 +79,15 @@ def process_records(
             if not validation_result.is_valid:
                 review_decision = review_service.from_validation(validation_result)
                 review_service.enqueue(intake.request_id, review_decision)
+                completed_at = utc_now()
                 storage_service.save_run_log(
                     run_id=run_id,
                     request_id=intake.request_id,
                     stage="validation",
                     status=ProcessingStatus.REVIEW_REQUIRED.value,
                     started_at=started_at,
-                    completed_at=utc_now(),
+                    completed_at=completed_at,
+                    processing_time_ms=elapsed_ms(started_at, completed_at),
                     prompt_version=settings.prompt_version,
                     error_message="; ".join(validation_result.errors),
                 )
@@ -104,13 +113,15 @@ def process_records(
                 message = "classification completed successfully"
 
             storage_service.save_processed_output(output)
+            completed_at = utc_now()
             storage_service.save_run_log(
                 run_id=run_id,
                 request_id=intake.request_id,
                 stage="classification",
                 status=str(output.status),
                 started_at=started_at,
-                completed_at=utc_now(),
+                completed_at=completed_at,
+                processing_time_ms=elapsed_ms(started_at, completed_at),
                 prompt_version=settings.prompt_version,
             )
             results.append(
@@ -126,13 +137,15 @@ def process_records(
         except Exception as exc:
             logger.exception("Processing failed for request %s", intake.request_id)
             review_service.enqueue_system_failure(intake.request_id, str(exc))
+            completed_at = utc_now()
             storage_service.save_run_log(
                 run_id=run_id,
                 request_id=intake.request_id,
                 stage="classification",
                 status=ProcessingStatus.FAILED.value,
                 started_at=started_at,
-                completed_at=utc_now(),
+                completed_at=completed_at,
+                processing_time_ms=elapsed_ms(started_at, completed_at),
                 prompt_version=settings.prompt_version,
                 error_message=str(exc),
             )

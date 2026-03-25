@@ -59,3 +59,8 @@ class Settings(BaseModel):
         if not self.database_url.startswith(prefix):
             return None
         return Path(self.database_url.removeprefix(prefix))
+
+    def validate_runtime(self) -> None:
+        """Validate that the minimum runtime configuration is present."""
+        if self.provider == DEFAULT_PROVIDER and not self.openai_api_key:
+            raise ValueError("OPENAI_API_KEY is not set. Add it to your environment or .env file.")

@@ -26,7 +26,7 @@ class StorageService:
         self.settings = settings
         self._ensure_parent_dir()
         self.engine = create_engine(settings.database_url, future=True)
-        self.session_factory = sessionmaker(bind=self.engine, future=True)
+        self.session_factory = sessionmaker(bind=self.engine, future=True, expire_on_commit=False)
 
     def _ensure_parent_dir(self) -> None:
         database_path = self.settings.database_path
@@ -132,3 +132,7 @@ class StorageService:
     def list_review_queue(self) -> list[ReviewQueueRecord]:
         with self.session() as session:
             return list(session.scalars(select(ReviewQueueRecord).order_by(ReviewQueueRecord.review_id.desc())))
+
+    def list_requests(self) -> list[RequestRecord]:
+        with self.session() as session:
+            return list(session.scalars(select(RequestRecord).order_by(RequestRecord.created_at.desc())))

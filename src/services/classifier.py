@@ -28,6 +28,7 @@ class ClassificationService:
     def _build_client(self) -> OpenAI:
         if self.settings.provider != Provider.OPENAI.value:
             raise NotImplementedError(f"provider not implemented: {self.settings.provider}")
+        self.settings.validate_runtime()
         return OpenAI(api_key=self.settings.openai_api_key)
 
     def classify(self, intake: CanonicalIntake, prompt_version: str) -> ClassificationOutput:

@@ -47,6 +47,55 @@ class ReportingService:
 
         return pd.DataFrame(records)
 
+    def get_requests_index(self) -> pd.DataFrame:
+        """Return all saved requests with a best-effort latest workflow status."""
+
+        with self.storage_service.session() as session:
+            requests = session.scalars(select(RequestRecord)).all()
+            outputs = session.scalars(select(ProcessedOutputRecord)).all()
+            reviews = session.scalars(select(ReviewQueueRecord)).all()
+            run_logs = session.scalars(select(RunLogRecord)).all()
+
+        latest_output_by_request: dict[str, ProcessedOutputRecord] = {}
+        for output in outputs:
+            previous = latest_output_by_request.get(output.request_id)
+            if previous is None or output.processed_at > previous.processed_at:
+                latest_output_by_request[output.request_id] = output
+
+        review_count_by_request: dict[str, int] = {}
+        for review in reviews:
+            review_count_by_request[review.request_id] = review_count_by_request.get(review.request_id, 0) + 1
+
+        latest_log_by_request: dict[str, RunLogRecord] = {}
+        for log in run_logs:
+            previous = latest_log_by_request.get(log.request_id)
+            if previous is None or log.created_at > previous.created_at:
+                latest_log_by_request[log.request_id] = log
+
+        records: list[dict[str, Any]] = []
+        for request in requests:
+            latest_output = latest_output_by_request.get(request.request_id)
+            latest_log = latest_log_by_request.get(request.request_id)
+            records.append(
+                {
+                    "request_id": request.request_id,
+                    "source_type": request.source_type,
+                    "source_name": request.source_name,
+                    "business_domain_hint": request.business_domain_hint,
+                    "latest_status": (
+                        latest_output.status
+                        if latest_output is not None
+                        else (latest_log.status if latest_log is not None else "received")
+                    ),
+                    "request_type": latest_output.request_type if latest_output is not None else None,
+                    "priority": latest_output.priority if latest_output is not None else None,
+                    "review_item_count": review_count_by_request.get(request.request_id, 0),
+                    "received_at": request.received_at,
+                }
+            )
+
+        return pd.DataFrame(records)
+
     def get_review_queue(self) -> pd.DataFrame:
         """Return review queue items."""
 
@@ -70,6 +119,7 @@ class ReportingService:
     def get_dashboard_metrics(self) -> dict[str, Any]:
         """Return aggregate dashboard metrics."""
 
+        requests_index = self.get_requests_index()
         processed = self.get_processed_requests()
         reviews = self.get_review_queue()
 
@@ -82,19 +132,19 @@ class ReportingService:
         )
 
         metrics = {
-            "total_requests": int(len(processed.index)),
+            "total_requests": int(len(requests_index.index)),
             "validated_requests": int((processed["status"] == "validated").sum()) if not processed.empty else 0,
             "review_required_requests": (
                 int((processed["status"] == "review_required").sum()) if not processed.empty else 0
             ),
-            "failed_requests": int((processed["status"] == "failed").sum()) if not processed.empty else 0,
+            "failed_requests": (
+                int((requests_index["latest_status"] == "failed").sum()) if not requests_index.empty else 0
+            ),
             "review_queue_items": int(len(reviews.index)),
             "request_type_breakdown": (
                 processed["request_type"].value_counts().to_dict() if not processed.empty else {}
             ),
-            "source_type_breakdown": (
-                processed["source_type"].value_counts().to_dict() if not processed.empty else {}
-            ),
+            "source_type_breakdown": requests_index["source_type"].value_counts().to_dict() if not requests_index.empty else {},
             "average_processing_time_ms": average_processing_time_ms,
         }
         return metrics
