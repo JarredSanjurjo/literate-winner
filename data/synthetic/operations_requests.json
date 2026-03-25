@@ -1,0 +1,12 @@
+[
+  {
+    "content": "Client has requested an update to the implementation plan and wants a status summary before Monday.",
+    "business_domain": "architecture",
+    "location": "Brisbane"
+  },
+  {
+    "message": "Urgent issue reported with room allocation mismatch. Please investigate and recommend next steps.",
+    "business_domain": "hospitality",
+    "priority_hint": "urgent"
+  }
+]
